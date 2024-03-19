@@ -2,34 +2,48 @@
 	import TodoList from './lib/TodoList.svelte';
 	import { v4 as uuid } from 'uuid';
 	import { tick } from 'svelte';
+	// import { response } from 'express';
 
 	let todoList;
 	let showList = true;
 
-	let todos = [
-		{
-			id: uuid(),
-			title: 'Todo 1',
-			completed: true
-		},
-		{
-			id: uuid(),
-			title: 'Todo 2',
-			completed: false
-		},
-		{
-			id: uuid(),
-			title: 'Todo 3',
-			completed: true
-		},
-		{
-			id: uuid(),
-			title:
-				'A long long long long long long long long long long long long long long long long todo',
-			completed: false
-		}
-	];
+	// let todos = [
+	// 	{
+	// 		id: uuid(),
+	// 		title: 'Todo 1',
+	// 		completed: true
+	// 	},
+	// 	{
+	// 		id: uuid(),
+	// 		title: 'Todo 2',
+	// 		completed: false
+	// 	},
+	// 	{
+	// 		id: uuid(),
+	// 		title: 'Todo 3',
+	// 		completed: true
+	// 	},
+	// 	{
+	// 		id: uuid(),
+	// 		title:
+	// 			'A long long long long long long long long long long long long long long long long todo',
+	// 		completed: false
+	// 	}
+	// ];
 
+	let todos = null;
+
+	const loadTodos = () => {
+		return fetch('https://jsonplaceholder.typicode.com/todos?_limit=10').then((response) => {
+			if (response.ok) {
+				return response.json();
+			} else {
+				throw new Error('An error has occurred.');
+			}
+		});
+	};
+
+	let promise = loadTodos();
 	async function handleAddTodo(event) {
 		event.preventDefault();
 
@@ -66,15 +80,26 @@
 </label>
 
 {#if showList}
-	<div style:max-width="400px">
-		<TodoList
-			{todos}
-			bind:this={todoList}
-			on:addtodo={handleAddTodo}
-			on:removetodo={handleRemoveTodo}
-			on:toggletodo={handleToggleTodo}
-		/>
-	</div>
+	{#await promise}
+		<p>Loading...</p>
+	{:then todos}
+		<div style:max-width="400px">
+			<TodoList
+				{todos}
+				bind:this={todoList}
+				on:addtodo={handleAddTodo}
+				on:removetodo={handleRemoveTodo}
+				on:toggletodo={handleToggleTodo}
+			/>
+		</div>
+	{:catch error}
+		<p>{error.message || 'An error hardcoded occurred'}</p>
+	{/await}
+	<button
+		on:click={() => {
+			promise = loadTodos();
+		}}>Refresh</button
+	>
 {/if}
 
 <style>
