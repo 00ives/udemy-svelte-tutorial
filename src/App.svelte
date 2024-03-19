@@ -1,7 +1,7 @@
 <script>
 	import TodoList from './lib/TodoList.svelte';
 	import { v4 as uuid } from 'uuid';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	// import { response } from 'express';
 
 	let todoList;
@@ -32,18 +32,25 @@
 	// ];
 
 	let todos = null;
+	let error = null;
+	let isLoading = false;
 
-	const loadTodos = () => {
-		return fetch('https://jsonplaceholder.typicode.com/todos?_limit=10').then((response) => {
+	onMount(() => {
+		loadTodos();
+	});
+
+	const loadTodos = async () => {
+		isLoading = true;
+		await fetch('https://jsonplaceholder.typicode.com/todoss?_limit=10').then(async (response) => {
 			if (response.ok) {
-				return response.json();
+				todos = await response.json();
 			} else {
-				throw new Error('An error has occurred.');
+				error = 'An error has occurred.';
 			}
 		});
+		isLoading = false;
 	};
 
-	let promise = loadTodos();
 	async function handleAddTodo(event) {
 		event.preventDefault();
 
@@ -80,26 +87,17 @@
 </label>
 
 {#if showList}
-	{#await promise}
-		<p>Loading...</p>
-	{:then todos}
-		<div style:max-width="400px">
-			<TodoList
-				{todos}
-				bind:this={todoList}
-				on:addtodo={handleAddTodo}
-				on:removetodo={handleRemoveTodo}
-				on:toggletodo={handleToggleTodo}
-			/>
-		</div>
-	{:catch error}
-		<p>{error.message || 'An error hardcoded occurred'}</p>
-	{/await}
-	<button
-		on:click={() => {
-			promise = loadTodos();
-		}}>Refresh</button
-	>
+	<div style:max-width="400px">
+		<TodoList
+			{todos}
+			{error}
+			{isLoading}
+			bind:this={todoList}
+			on:addtodo={handleAddTodo}
+			on:removetodo={handleRemoveTodo}
+			on:toggletodo={handleToggleTodo}
+		/>
+	</div>
 {/if}
 
 <style>
