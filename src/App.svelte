@@ -3,37 +3,15 @@
 	import { v4 as uuid } from 'uuid';
 	import { onMount, tick } from 'svelte';
 	// import { response } from 'express';
+	// import { response } from 'express';
 
 	let todoList;
 	let showList = true;
 
-	// let todos = [
-	// 	{
-	// 		id: uuid(),
-	// 		title: 'Todo 1',
-	// 		completed: true
-	// 	},
-	// 	{
-	// 		id: uuid(),
-	// 		title: 'Todo 2',
-	// 		completed: false
-	// 	},
-	// 	{
-	// 		id: uuid(),
-	// 		title: 'Todo 3',
-	// 		completed: true
-	// 	},
-	// 	{
-	// 		id: uuid(),
-	// 		title:
-	// 			'A long long long long long long long long long long long long long long long long todo',
-	// 		completed: false
-	// 	}
-	// ];
-
 	let todos = null;
 	let error = null;
 	let isLoading = false;
+	let isAdding = false;
 
 	onMount(() => {
 		loadTodos();
@@ -41,7 +19,7 @@
 
 	const loadTodos = async () => {
 		isLoading = true;
-		await fetch('https://jsonplaceholder.typicode.com/todoss?_limit=10').then(async (response) => {
+		await fetch('https://jsonplaceholder.typicode.com/todos?_limit=10').then(async (response) => {
 			if (response.ok) {
 				todos = await response.json();
 			} else {
@@ -53,18 +31,30 @@
 
 	async function handleAddTodo(event) {
 		event.preventDefault();
-
-		todos = [
-			...todos,
-			{
-				id: uuid(),
+		isAdding = true;
+		await fetch('https://jsonplaceholder.typicode.com/todos', {
+			method: 'POST',
+			body: JSON.stringify({
 				title: event.detail.title,
 				completed: false
+			}),
+			headers: {
+				'Content-type': 'application/json; charset=UTF-8'
 			}
-		];
-		await tick();
+		}).then(async (response) => {
+			if (response.ok) {
+				const todo = await response.json();
+				todos = [...todos, { ...todo, id: uuid() }];
 
-		todoList.clearInput();
+				todoList.clearInput();
+				console.log(1111, 'todo', todo);
+			} else {
+				alert('An error has Occurred saving todo');
+			}
+		});
+		isAdding = false;
+		await tick();
+		todoList.focusInput();
 	}
 
 	function handleRemoveTodo(event) {
@@ -92,6 +82,7 @@
 			{todos}
 			{error}
 			{isLoading}
+			disableAdding={isAdding}
 			bind:this={todoList}
 			on:addtodo={handleAddTodo}
 			on:removetodo={handleRemoveTodo}
