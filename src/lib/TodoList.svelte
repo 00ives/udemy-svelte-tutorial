@@ -2,8 +2,14 @@
 
 <script>
 	import Button from './Button.svelte';
-	import { createEventDispatcher, beforeUpdate, afterUpdate } from 'svelte';
+	import { createEventDispatcher, afterUpdate } from 'svelte';
 	import FaRegTrashAlt from 'svelte-icons/fa/FaRegTrashAlt.svelte';
+	import { identity } from 'svelte/internal';
+
+	afterUpdate(() => {
+		if (autoscroll) listDiv.scrollTo(0, listDivScrollHeight);
+		autoscroll = false;
+	});
 
 	export let todos = null;
 	export let error = null;
@@ -13,20 +19,13 @@
 
 	let prevTodos = todos;
 	let inputText = '';
-	let input, listDiv, autoScroll, listDivScrollHeight;
+	let input, listDiv, autoscroll, listDivScrollHeight;
+
 	const dispatch = createEventDispatcher();
 
-	beforeUpdate(() => {
-		if (listDiv) console.log(listDiv.offsetHeight);
-	});
-	afterUpdate(() => {
-		if (autoScroll) listDiv.scrollTo(0, listDivScrollHeight);
-		autoScroll = false;
-	});
-
 	$: {
-		autoScroll = todos && prevTodos && todos.length > prevTodos.length;
-		prevTodos: todos;
+		autoscroll = todos && prevTodos && todos.length > prevTodos.length;
+		prevTodos = todos;
 	}
 
 	export function clearInput() {
@@ -42,7 +41,9 @@
 			{
 				title: inputText
 			},
-			{ cancelable: true }
+			{
+				cancelable: true
+			}
 		);
 		if (isNotCancelled) {
 			inputText = '';
@@ -70,38 +71,40 @@
 		<p class="state-text">{error}</p>
 	{:else if todos}
 		<div class="todo-list" bind:this={listDiv}>
-			<!-- {#if todos} -->
 			<div bind:offsetHeight={listDivScrollHeight}>
 				{#if todos.length === 0}
 					<p class="state-text">No todos yet</p>
 				{:else}
 					<ul>
-						{#each todos as { id, title, completed } (id)}
-							<!-- {(console.log(title), '')}
-					{@debug id, title} -->
-							<li class:completed>
-								<label>
-									<input
-										disabled={disabledItems.includes(id)}
-										on:input={(event) => {
-											event.currentTarget.checked = completed;
-											handleToggleTodo(id, !completed);
-										}}
-										type="checkbox"
-										checked={completed}
-									/>
-									{title}
-								</label>
-								<button
-									disabled={disabledItems.includes(id)}
-									class="remove-todo-button"
-									aria-label="Remove todo: {title}"
-									on:click={() => handleRemoveTodo(id)}
-								>
-									<span style:width="10px" style:display="inline-block">
-										<FaRegTrashAlt />
-									</span>
-								</button>
+						{#each todos as todo, index (todo.id)}
+							{@const { id, completed, title } = todo}
+							<li>
+								<slot {todo} {index} {handleToggleTodo}>
+									<div class:completed>
+										<label>
+											<input
+												disabled={disabledItems.includes(id)}
+												on:input={(event) => {
+													event.currentTarget.checked = completed;
+													handleToggleTodo(id, !completed);
+												}}
+												type="checkbox"
+												checked={completed}
+											/>
+											<slot name="title">{title}</slot>
+										</label>
+										<button
+											disabled={disabledItems.includes(id)}
+											class="remove-todo-button"
+											aria-label="Remove todo: {title}"
+											on:click={() => handleRemoveTodo(id)}
+										>
+											<span style:width="10px" style:display="inline-block">
+												<FaRegTrashAlt />
+											</span>
+										</button>
+									</div>
+								</slot>
 							</li>
 						{/each}
 					</ul>
@@ -126,7 +129,6 @@
 	.todo-list-wrapper {
 		background-color: #424242;
 		border: 1px solid #4b4b4b;
-
 		.state-text {
 			margin: 0;
 			padding: 15px;
@@ -139,7 +141,7 @@
 				margin: 0;
 				padding: 10px;
 				list-style: none;
-				li {
+				li > div {
 					margin-bottom: 5px;
 					display: flex;
 					align-items: center;
@@ -190,8 +192,8 @@
 			padding: 15px;
 			background-color: #303030;
 			display: flex;
-			border-top: 1px solid #4b4b4b;
 			flex-wrap: wrap;
+			border-top: 1px solid #4b4b4b;
 			:global(.add-todo-button) {
 				background-color: aqua;
 			}
